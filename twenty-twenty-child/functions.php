@@ -162,66 +162,118 @@ function get_product_video($id)
     return get_post_meta($id, 'twentytwentychild_products_video', true);
 }
 
-function get_featured_image_by_id( $id ){
-	global $post; 
-	$post = get_post($id); 
+function get_featured_image_by_id($id)
+{
+    global $post;
+    $post = get_post($id);
 
-	ob_start();
-	get_template_part( 'template-parts/featured-image');
-	$result = ob_get_contents(); 
-	ob_end_clean();  
-	wp_reset_postdata();
+    ob_start();
+    get_template_part('template-parts/featured-image');
+    $result = ob_get_contents();
+    ob_end_clean();
+    wp_reset_postdata();
 
-	return $result;
+    return $result;
 }
 
-function twentytwentychild_product_shortcode($atts) {
+function twentytwentychild_product_shortcode($atts)
+{
 
-	extract(shortcode_atts(array(
-		'id'=>0,
-		'color'=>'#BBB'
+    extract(shortcode_atts(array(
+        'id' => 0,
+        'color' => '#BBB',
     ), $atts));
-    
-	$result = '';
 
-	if( $id ) {
+    $result = '';
+
+    if ($id) {
         $price = get_product_price($id);
         $is_on_sale = get_product_is_on_sale($id);
         $sale_price = get_product_sale_price($id);
 
-		$result .=	'<div class="grid">';
-		$result .= 		'<a href="' . esc_url( get_permalink($id) ) . '" class="grid-column grid-column-center" style="border: 1px solid '. $color .';">';
-		$result .= 			get_featured_image_by_id($id);
-		$result .=			'<p class="entry-title grid-title">' . get_the_title($id) . '</p>';
-		$result .=			'<p class="price">' . ( $is_on_sale ? $price.'<span>'.$sale_price.'</span>' : $price ) . '</p>';
-		if( $is_on_sale ) {
-			$result .= 		'<div class="sale"><span>'.__('SALE', 'twentytwentychild' ).'</span></div>';
-		}
-		$result .= 		'</a>';
-		$result .=	'</div>';
-	}
+        $result .= '<div class="grid">';
+        $result .= '<a href="' . esc_url(get_permalink($id)) . '" class="grid-column grid-column-center" style="border: 1px solid ' . $color . ';">';
+        $result .= get_featured_image_by_id($id);
+        $result .= '<p class="entry-title grid-title">' . get_the_title($id) . '</p>';
+        $result .= '<p class="price">' . ($is_on_sale ? $price . '<span>' . $sale_price . '</span>' : $price) . '</p>';
+        if ($is_on_sale) {
+            $result .= '<div class="sale"><span>' . __('SALE', 'twentytwentychild') . '</span></div>';
+        }
+        $result .= '</a>';
+        $result .= '</div>';
+    }
 
-	return apply_filters('custom_shortcode_product', $result);
+    return apply_filters('custom_shortcode_product', $result);
 }
 add_shortcode('product', 'twentytwentychild_product_shortcode');
 
-function twentytwentychild_custom_columns_posts_head($defaults) {
+function twentytwentychild_custom_columns_posts_head($defaults)
+{
     $new_array['shortcode'] = '<div style="text-align: center;">Shortcode<div>';
-    array_splice( $defaults, 3, 0, $new_array );
+    array_splice($defaults, 3, 0, $new_array);
     return $defaults;
 }
 
-function twentytwentychild_custom_columns_content($column_name, $post_ID) {
-    switch ( $column_name ) {
+function twentytwentychild_custom_columns_content($column_name, $post_ID)
+{
+    switch ($column_name) {
         case 'shortcode':
-            echo '<div style="text-align: center;"><code>[product id="'.$post_ID.'" color="#000"]</code><div>';
+            echo '<div style="text-align: center;"><code>[product id="' . $post_ID . '" color="#000"]</code><div>';
             break;
     }
 }
 add_filter('manage_products_posts_columns', 'twentytwentychild_custom_columns_posts_head');
-add_action('manage_products_posts_custom_column', 'twentytwentychild_custom_columns_content', 10,2);
+add_action('manage_products_posts_custom_column', 'twentytwentychild_custom_columns_content', 10, 2);
 
-function shortcodeFilter(string $input): string	{
-        return '<div style="background: transparent;">'.$input.'</div>';	
-    }
+function shortcodeFilter(string $input): string
+{
+    return '<div style="background: transparent;">' . $input . '</div>';
+}
 add_filter('custom_shortcode_product', 'shortcodeFilter');
+
+// API
+function twentytwentychild_products_post_by_category_slug_or_id($val)
+{
+    $query_on = is_numeric($val['pram']) ? 'id' : 'slug';
+    $args = [
+        'post_type' => 'products',
+        'posts_per_page' => -1,
+        'tax_query' => array(
+            array(
+                'taxonomy' => 'custom_categories',
+                'field' => $query_on,
+                'terms' => $val['pram'],
+            ),
+        ),
+    ];
+
+    $posts = get_posts($args);
+
+    $data = [];
+    $i = 0;
+    foreach ($posts as $post) {
+        $data[$i]['id'] = $post->ID;
+        $data[$i]['slug'] = $post->post_name;
+        $data[$i]['link'] = get_permalink($post->ID);
+        $data[$i]['title'] = $post->post_title;
+        $data[$i]['description'] = get_product_description($post->ID);
+        $data[$i]['featured_image']['thumbnail'] = get_the_post_thumbnail_url($post->ID, 'thumbnail');
+        $data[$i]['featured_image']['medium'] = get_the_post_thumbnail_url($post->ID, 'medium');
+        $data[$i]['featured_image']['large'] = get_the_post_thumbnail_url($post->ID, 'large');
+        $data[$i]['price'] = get_product_price($post->ID);
+        $data[$i]['is_on_sale'] = get_product_is_on_sale($post->ID);
+        $data[$i]['sale_price'] = get_product_sale_price($post->ID);
+        $i++;
+    }
+
+    return $data;
+}
+
+function twentytwentychild_new_endpoints()
+{
+    register_rest_route('products/v1', 'category/(?P<pram>[a-zA-Z0-9-]+)', array(
+        'methods' => 'GET',
+        'callback' => 'twentytwentychild_products_post_by_category_slug_or_id',
+    ));
+};
+add_action('rest_api_init', 'twentytwentychild_new_endpoints');
