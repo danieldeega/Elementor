@@ -15,8 +15,11 @@ wp_body_open();
 ?>
 
     <header id="site-header" class="header-footer-group" role="banner">
+
         <div class="header-inner section-inner">
+
             <div class="header-titles-wrapper">
+
                 <?php
 
 $enable_header_search = get_theme_mod('enable_header_search', true);
