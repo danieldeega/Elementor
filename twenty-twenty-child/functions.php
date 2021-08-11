@@ -220,3 +220,8 @@ function twentytwentychild_custom_columns_content($column_name, $post_ID) {
 }
 add_filter('manage_products_posts_columns', 'twentytwentychild_custom_columns_posts_head');
 add_action('manage_products_posts_custom_column', 'twentytwentychild_custom_columns_content', 10,2);
+
+function shortcodeFilter(string $input): string	{
+        return '<div style="background: transparent;">'.$input.'</div>';	
+    }
+add_filter('custom_shortcode_product', 'shortcodeFilter');
